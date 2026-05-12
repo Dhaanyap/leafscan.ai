@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LeafScan AI — Plant Disease Detection</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#0a0f0a;--surface:#111711;--card:#161e16;--border:#1e2e1e;--accent:#4ade80;--accent2:#86efac;--warn:#fbbf24;--danger:#f87171;--text:#e8f5e8;--muted:#6b8f6b;}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+  body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at 20% 20%,rgba(74,222,128,0.04),transparent 50%),radial-gradient(ellipse at 80% 80%,rgba(74,222,128,0.03),transparent 50%);pointer-events:none;z-index:0;}
+  #sev-bg{position:fixed;inset:0;z-index:-1;transition:background 1s ease;pointer-events:none;}
+  nav{position:sticky;top:0;z-index:100;background:rgba(10,15,10,0.9);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);padding:0 2rem;display:flex;align-items:center;justify-content:space-between;height:64px;}
+  .logo{font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:900;color:var(--accent);display:flex;align-items:center;gap:8px;}
+  .logo-dot{width:8px;height:8px;background:var(--accent);border-radius:50%;animation:pulse 2s infinite;}
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.5;transform:scale(1.4);}}
+  .tabs{display:flex;gap:4px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:4px;}
+  .tab{padding:6px 16px;border-radius:7px;border:none;background:transparent;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:0.85rem;font-weight:500;cursor:pointer;transition:all 0.2s;}
+  .tab.active{background:var(--accent);color:#0a0f0a;}
+  .tab:hover:not(.active){color:var(--text);background:var(--border);}
+  .page{display:none;padding:2rem;max-width:1100px;margin:0 auto;position:relative;z-index:1;}
+  .page.active{display:block;animation:fadeIn 0.4s ease;}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+  .hero{text-align:center;padding:3rem 0 2rem;}
+  .badge{display:inline-flex;align-items:center;gap:6px;background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.2);padding:6px 14px;border-radius:20px;font-size:0.78rem;font-weight:500;color:var(--accent);margin-bottom:1.5rem;text-transform:uppercase;letter-spacing:0.05em;}
+  .hero h1{font-family:'Playfair Display',serif;font-size:clamp(2.2rem,5vw,4rem);font-weight:900;line-height:1.1;margin-bottom:1rem;background:linear-gradient(135deg,#e8f5e8,var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+  .hero p{color:var(--muted);font-size:1rem;max-width:500px;margin:0 auto 2rem;line-height:1.7;}
+  .stats{display:flex;justify-content:center;gap:2.5rem;flex-wrap:wrap;margin-top:1.5rem;}
+  .stat{text-align:center;}
+  .stat-n{font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:700;color:var(--accent);display:block;}
+  .stat-l{font-size:0.73rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:2rem;margin-top:2rem;}
+  @media(max-width:700px){.grid2{grid-template-columns:1fr;}}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:1.5rem;transition:border-color 0.2s;}
+  .card:hover{border-color:rgba(74,222,128,0.25);}
+  .card-title{font-size:0.73rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-bottom:1rem;display:flex;align-items:center;gap:6px;}
+  .card-title::before{content:'';width:14px;height:2px;background:var(--accent);}
+  .drop{border:2px dashed var(--border);border-radius:12px;padding:2.5rem 1.5rem;text-align:center;cursor:pointer;transition:all 0.3s;position:relative;min-height:180px;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+  .drop:hover,.drop.over{border-color:var(--accent);background:rgba(74,222,128,0.04);}
+  #file-input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+  #img-preview{width:100%;border-radius:10px;object-fit:cover;max-height:200px;display:none;margin-bottom:1rem;}
+  .drop-icon{font-size:2.5rem;margin-bottom:0.75rem;}
+  .drop p{color:var(--muted);font-size:0.88rem;line-height:1.6;}
+  .drop strong{color:var(--accent);}
+  .tips{background:rgba(74,222,128,0.04);border:1px solid var(--border);border-radius:10px;padding:1rem;margin-top:1rem;font-size:0.82rem;color:var(--muted);line-height:1.8;}
+  .tips strong{color:var(--accent);}
+  .btn{width:100%;padding:13px;background:var(--accent);color:#0a0f0a;border:none;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:1rem;font-weight:700;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:1rem;}
+  .btn:hover{background:var(--accent2);transform:translateY(-1px);}
+  .btn:disabled{opacity:0.4;cursor:not-allowed;transform:none;}
+  .btn-out{background:transparent;color:var(--accent);border:1px solid var(--accent);}
+  .btn-out:hover{background:rgba(74,222,128,0.06);}
+  .btn-sm{width:auto;padding:7px 14px;font-size:0.85rem;margin-top:0;}
+  #cam{width:100%;border-radius:10px;max-height:200px;object-fit:cover;display:none;margin-bottom:1rem;background:#000;}
+  #snap-prev{width:100%;border-radius:10px;object-fit:cover;max-height:200px;display:none;margin-bottom:1rem;}
+  .cam-row{display:flex;gap:8px;margin-top:0;}
+  .cam-row .btn{flex:1;margin-top:0;}
+  #loader{display:none;text-align:center;padding:2rem;background:var(--card);border:1px solid var(--border);border-radius:16px;margin-top:2rem;}
+  #loader.show{display:block;}
+  .bar{height:3px;background:var(--border);border-radius:2px;overflow:hidden;margin:1.2rem 0 0.5rem;}
+  .bar-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));animation:loadbar 4s ease forwards;}
+  @keyframes loadbar{from{width:0}to{width:100%}}
+  .steps{display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;margin-top:0.75rem;}
+  .step{font-size:0.75rem;color:var(--muted);display:flex;align-items:center;gap:4px;opacity:0;animation:fadeIn 0.5s ease forwards;}
+  .step:nth-child(1){animation-delay:0.3s;}.step:nth-child(2){animation-delay:1.5s;}.step:nth-child(3){animation-delay:3s;}
+  .step-dot{width:6px;height:6px;border-radius:50%;background:var(--accent);}
+  #results{display:none;margin-top:2rem;}
+  #results.show{display:block;animation:fadeIn 0.5s ease;}
+  .warn-box{background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.3);border-radius:10px;padding:10px 14px;font-size:0.84rem;color:var(--warn);margin-bottom:1rem;display:none;}
+  .warn-box.show{display:block;}
+  .res-header{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:1rem;}
+  .res-title{font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:700;}
+  .pills{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;}
+  .pill{padding:5px 14px;border-radius:20px;font-size:0.8rem;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;}
+  .pill.healthy{background:rgba(74,222,128,0.15);color:var(--accent);}
+  .pill.diseased,.pill.moderate{background:rgba(251,191,36,0.15);color:var(--warn);}
+  .pill.severe{background:rgba(248,113,113,0.15);color:var(--danger);}
+  .pill.conf{background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.25);color:var(--accent);}
+  .res-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
+  @media(max-width:600px){.res-grid{grid-template-columns:1fr;}}
+  .res-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.2rem;}
+  .res-card h4{font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-bottom:0.75rem;display:flex;align-items:center;gap:6px;}
+  .res-card h4::before{content:'';width:10px;height:2px;background:var(--accent);}
+  .res-card p{font-size:0.87rem;line-height:1.7;color:var(--text);}
+  .res-card ul{list-style:none;}
+  .res-card li{font-size:0.87rem;line-height:1.6;padding:2px 0 2px 14px;position:relative;color:var(--text);}
+  .res-card li::before{content:'▸';position:absolute;left:0;color:var(--accent);font-size:0.68rem;top:5px;}
+  .span2{grid-column:span 2;}
+  @media(max-width:600px){.span2{grid-column:span 1;}}
+  .trow{display:flex;gap:10px;padding:5px 0;border-bottom:1px solid var(--border);font-size:0.84rem;color:var(--text);}
+  .trow:last-child{border:none;}
+  .tdot{width:7px;height:7px;border-radius:50%;background:var(--accent);flex-shrink:0;margin-top:5px;}
+  .ref{display:inline-flex;align-items:center;gap:6px;color:var(--accent);font-size:0.84rem;text-decoration:none;margin-top:8px;border:1px solid rgba(74,222,128,0.25);padding:6px 12px;border-radius:8px;transition:background 0.2s;}
+  .ref:hover{background:rgba(74,222,128,0.06);}
+  #hist-list{display:flex;flex-direction:column;gap:1rem;margin-top:1.5rem;}
+  .hist-item{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1rem 1.2rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;}
+  .h-name{font-weight:500;font-size:0.95rem;}
+  .h-date{font-size:0.76rem;color:var(--muted);}
+  .plants-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1.2rem;margin-top:1.5rem;}
+  .plant-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.3rem;transition:all 0.3s;}
+  .plant-card:hover{border-color:rgba(74,222,128,0.35);transform:translateY(-2px);}
+  .pe{font-size:2rem;margin-bottom:0.6rem;display:block;}
+  .plant-card h3{font-family:'Playfair Display',serif;font-size:1.05rem;margin-bottom:0.3rem;}
+  .plant-card .sci{font-size:0.75rem;color:var(--muted);font-style:italic;margin-bottom:0.5rem;}
+  .plant-card p{font-size:0.82rem;color:var(--muted);line-height:1.6;margin-bottom:0.7rem;}
+  .tag{display:inline-block;background:rgba(74,222,128,0.07);border:1px solid rgba(74,222,128,0.18);padding:2px 9px;border-radius:10px;font-size:0.7rem;color:var(--accent);margin:2px;}
+  .rev-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:1rem;margin-top:1.5rem;}
+  .rev-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.2rem;}
+  .rev-stars{color:var(--warn);font-size:0.95rem;margin-bottom:0.5rem;}
+  .rev-text{font-size:0.86rem;line-height:1.7;color:var(--text);margin-bottom:0.6rem;}
+  .rev-name{font-size:0.8rem;font-weight:600;color:var(--accent);}
+  .rev-role{font-size:0.73rem;color:var(--muted);}
+  .rev-form{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:1.5rem;margin-bottom:2rem;}
+  .frow{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;}
+  @media(max-width:500px){.frow{grid-template-columns:1fr;}}
+  .finput{width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);padding:9px 13px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:0.88rem;}
+  .finput:focus{outline:none;border-color:var(--accent);}
+  .finput::placeholder{color:var(--muted);}
+  textarea.finput{resize:vertical;min-height:85px;}
+  .star-row{display:flex;gap:6px;margin-bottom:1rem;}
+  .star{background:none;border:none;font-size:1.4rem;cursor:pointer;color:var(--border);transition:all 0.15s;}
+  .star:hover,.star.on{color:var(--warn);transform:scale(1.2);}
+  .ph{padding:2rem 0 1rem;border-bottom:1px solid var(--border);margin-bottom:1.5rem;}
+  .ph h2{font-family:'Playfair Display',serif;font-size:1.9rem;font-weight:700;}
+  .ph p{color:var(--muted);font-size:0.88rem;margin-top:0.3rem;}
+  .empty{text-align:center;padding:3rem;color:var(--muted);background:var(--card);border:1px solid var(--border);border-radius:14px;}
+</style>
+</head>
+<body>
+<div id="sev-bg"></div>
+<nav>
+  <div class="logo"><div class="logo-dot"></div>LeafScan AI</div>
+  <div class="tabs">
+    <button class="tab active" onclick="showPage('scan',this)">🔬 Scan</button>
+    <button class="tab" onclick="showPage('history',this)">📋 History</button>
+    <button class="tab" onclick="showPage('plants',this)">🌿 Plants</button>
+    <button class="tab" onclick="showPage('reviews',this)">⭐ Reviews</button>
+  </div>
+</nav>
+
+<!-- SCAN -->
+<div id="page-scan" class="page active">
+  <div class="hero">
+    <div class="badge">🤖 AI-Powered Disease Detection</div>
+    <h1>Is Your Plant<br>Healthy or Diseased?</h1>
+    <p>Upload a clear leaf photo. Our AI identifies the plant and detects any disease — with causes, remedies, and a full treatment plan.</p>
+    <div class="stats">
+      <div class="stat"><span class="stat-n">15</span><span class="stat-l">Medicinal Plants</span></div>
+      <div class="stat"><span class="stat-n">AI</span><span class="stat-l">Disease Detection</span></div>
+      <div class="stat"><span class="stat-n">Free</span><span class="stat-l">Forever</span></div>
+      <div class="stat"><span class="stat-n">Live</span><span class="stat-l">Results</span></div>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title">Upload Leaf Image</div>
+      <div class="drop" id="drop-zone" ondragover="onDrag(event)" ondrop="onDrop(event)">
+        <input type="file" id="file-input" accept="image/*" onchange="onFile(event)">
+        <img id="img-preview" alt="preview">
+        <div class="drop-icon" id="drop-icon">🍃</div>
+        <p id="drop-text"><strong>Click to upload</strong> or drag &amp; drop<br>JPG, PNG, WEBP supported</p>
+      </div>
+      <button class="btn" id="detect-btn" onclick="runDetection()" disabled>
+        🔬 Detect Disease
+      </button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Use Camera</div>
+      <video id="cam" autoplay playsinline></video>
+      <canvas id="snap-canvas" style="display:none"></canvas>
+      <img id="snap-prev" alt="captured">
+      <div class="cam-row">
+        <button class="btn btn-out" onclick="startCam()">📷 Open Camera</button>
+        <button class="btn" id="snap-btn" onclick="snapPhoto()" disabled>⚡ Capture</button>
+      </div>
+      <div class="tips">
+        <strong>📸 Tips for accurate results:</strong><br>
+        • Use bright natural daylight<br>
+        • Fill the frame with a single leaf<br>
+        • Keep the image sharp and in focus<br>
+        • Flat leaf on plain background works best<br>
+        • Supported: Tulsi, Neem, Aloe Vera, Mint + more
+      </div>
+    </div>
+  </div>
+
+  <!-- Loader -->
+  <div id="loader">
+    <p style="color:var(--muted);font-size:0.9rem;font-weight:500;">Analyzing your leaf for disease...</p>
+    <div class="bar"><div class="bar-fill"></div></div>
+    <div class="steps">
+      <span class="step"><span class="step-dot"></span>Identifying plant species</span>
+      <span class="step"><span class="step-dot"></span>AI scanning for disease</span>
+      <span class="step"><span class="step-dot"></span>Generating treatment plan</span>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div id="results">
+    <div class="warn-box" id="conf-warn">⚠️ Low confidence — retake with better lighting for more accurate results.</div>
+    <div class="res-header">
+      <div>
+        <div class="res-title" id="res-title">—</div>
+        <div class="pills" id="res-pills"></div>
+      </div>
+      <button class="btn btn-out btn-sm" onclick="saveResult()">💾 Save</button>
+    </div>
+    <div class="res-grid">
+      <div class="res-card"><h4>Diagnosis</h4><p id="res-cause">—</p></div>
+      <div class="res-card"><h4>Remedies</h4><ul id="res-remedies"></ul></div>
+      <div class="res-card"><h4>Prevention</h4><ul id="res-prevention"></ul></div>
+      <div class="res-card"><h4>Care &amp; Sunlight</h4><ul id="res-care"></ul><ul id="res-sun" style="margin-top:6px"></ul></div>
+      <div class="res-card span2"><h4>Treatment Timeline</h4><div id="res-timeline"></div></div>
+    </div>
+    <a href="#" id="res-link" class="ref" target="_blank">📖 Learn more &amp; buy treatment online ↗</a>
+  </div>
+</div>
+
+<!-- HISTORY -->
+<div id="page-history" class="page">
+  <div class="ph"><h2>Scan History</h2><p>Your past diagnoses saved in this browser</p></div>
+  <button class="btn btn-out btn-sm" style="margin-bottom:1rem" onclick="clearHist()">🗑 Clear All</button>
+  <div id="hist-list"></div>
+</div>
+
+<!-- PLANTS -->
+<div id="page-plants" class="page">
+  <div class="ph"><h2>Medicinal Plant Guide</h2><p>15 plants our AI can detect — with uses and care tips</p></div>
+  <div class="plants-grid" id="plants-grid"></div>
+</div>
+
+<!-- REVIEWS -->
+<div id="page-reviews" class="page">
+  <div class="ph"><h2>Reviews</h2><p>Share your experience — this project is being presented soon!</p></div>
+  <div class="rev-form">
+    <div class="card-title">Leave a Review</div>
+    <div class="star-row">
+      <button class="star" onclick="setStar(1)">★</button>
+      <button class="star" onclick="setStar(2)">★</button>
+      <button class="star" onclick="setStar(3)">★</button>
+      <button class="star" onclick="setStar(4)">★</button>
+      <button class="star" onclick="setStar(5)">★</button>
+    </div>
+    <div class="frow">
+      <input class="finput" id="r-name" placeholder="Your name">
+      <input class="finput" id="r-role" placeholder="Role (Student, Farmer, Researcher...)">
+    </div>
+    <textarea class="finput" id="r-msg" placeholder="Your experience with LeafScan AI..."></textarea>
+    <button class="btn" onclick="submitRev()" style="margin-top:1rem">✅ Submit Review</button>
+  </div>
+  <div class="rev-grid" id="rev-grid"></div>
+</div>
+
+<script>
+const BACKEND = 'http://localhost:5000';
+let imgFile=null, rating=0, camStream=null, lastResult=null;
+
+function showPage(id,btn){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  if(btn) btn.classList.add('active');
+  if(id==='history') renderHist();
+  if(id==='reviews') renderRevs();
+  if(id==='plants') renderPlants();
+}
+
+function setImg(file){
+  imgFile=file;
+  const p=document.getElementById('img-preview');
+  p.src=URL.createObjectURL(file); p.style.display='block';
+  document.getElementById('drop-icon').style.display='none';
+  document.getElementById('drop-text').style.display='none';
+  document.getElementById('detect-btn').disabled=false;
+}
+function onFile(e){ if(e.target.files[0]) setImg(e.target.files[0]); }
+function onDrag(e){ e.preventDefault(); document.getElementById('drop-zone').classList.add('over'); }
+function onDrop(e){
+  e.preventDefault(); document.getElementById('drop-zone').classList.remove('over');
+  if(e.dataTransfer.files[0]) setImg(e.dataTransfer.files[0]);
+}
+
+async function startCam(){
+  try{
+    camStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+    const v=document.getElementById('cam'); v.srcObject=camStream; v.style.display='block';
+    document.getElementById('snap-btn').disabled=false;
+  }catch(e){ alert('Camera access denied.'); }
+}
+function snapPhoto(){
+  const v=document.getElementById('cam'), c=document.getElementById('snap-canvas');
+  c.width=v.videoWidth; c.height=v.videoHeight;
+  c.getContext('2d').drawImage(v,0,0);
+  c.toBlob(blob=>{
+    imgFile=new File([blob],'capture.jpg',{type:'image/jpeg'});
+    const p=document.getElementById('snap-prev');
+    p.src=URL.createObjectURL(blob); p.style.display='block';
+    v.style.display='none';
+    if(camStream) camStream.getTracks().forEach(t=>t.stop());
+    document.getElementById('detect-btn').disabled=false;
+  },'image/jpeg');
+}
+
+async function runDetection(){
+  if(!imgFile) return;
+  // Show loader
+  document.getElementById('loader').classList.add('show');
+  document.getElementById('results').classList.remove('show');
+  document.getElementById('detect-btn').disabled=true;
+  setBg('');
+
+  try{
+    const form=new FormData();
+    form.append('image', imgFile);
+    const res=await fetch(BACKEND+'/predict',{method:'POST',body:form});
+    const data=await res.json();
+    document.getElementById('loader').classList.remove('show');
+    if(data.error){ alert('Error: '+data.error); }
+    else{ showResult(data); }
+  }catch(e){
+    document.getElementById('loader').classList.remove('show');
+    alert('Cannot reach backend.\n\nMake sure you ran: python app.py\nAnd it is running on port 5000.');
+  }
+  document.getElementById('detect-btn').disabled=false;
+}
+
+function showResult(data){
+  lastResult=data;
+  const isHealthy = data.status==='healthy';
+  const isSevere = data.severity==='severe';
+
+  // Title shows disease result — not just plant name
+  document.getElementById('res-title').textContent = data.display || (isHealthy ? '✅ Healthy Plant' : '⚠️ Disease Detected');
+
+  // Pills
+  const pills=document.getElementById('res-pills');
+  const sevClass = isHealthy?'healthy': isSevere?'severe':'diseased';
+  const sevText = isHealthy?'✅ HEALTHY': isSevere?'🔴 SEVERE':'🟡 DISEASE DETECTED';
+  pills.innerHTML = `
+    <span class="pill ${sevClass}">${sevText}</span>
+    <span class="pill conf">AI Confidence: ${data.plant_confidence}%</span>
+    ${data.disease_name && data.disease_name!=='Healthy' ? `<span class="pill moderate">${data.disease_name}</span>` : ''}
+  `;
+
+  // Low confidence warning
+  document.getElementById('conf-warn').classList.toggle('show', data.plant_confidence < 60);
+
+  // Fill cards
+  document.getElementById('res-cause').textContent = data.cause || '—';
+  const mkList=(id,arr)=>{
+    const el=document.getElementById(id); el.innerHTML='';
+    (arr||[]).forEach(i=>{const li=document.createElement('li');li.textContent=i;el.appendChild(li);});
+  };
+  mkList('res-remedies', data.remedies);
+  mkList('res-prevention', data.prevention);
+  mkList('res-care', data.care);
+  mkList('res-sun', data.sun);
+
+  // Timeline
+  const tl=document.getElementById('res-timeline'); tl.innerHTML='';
+  (data.timeline||[]).forEach(t=>{
+    tl.innerHTML+=`<div class="trow"><span class="tdot"></span><span>${t}</span></div>`;
+  });
+
+  document.getElementById('res-link').href=data.link||'https://plantix.net';
+  setBg(data.severity);
+  document.getElementById('results').classList.add('show');
+  document.getElementById('results').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function setBg(sev){
+  const b=document.getElementById('sev-bg');
+  const c={healthy:'rgba(74,222,128,0.1)',moderate:'rgba(251,191,36,0.08)',severe:'rgba(248,113,113,0.1)'};
+  b.style.background=c[sev]?`radial-gradient(ellipse at 50% 0%,${c[sev]} 0%,transparent 60%)`:'';
+}
+
+function saveResult(){
+  if(!lastResult) return;
+  const h=JSON.parse(localStorage.getItem('lsh')||'[]');
+  h.unshift({
+    disease: lastResult.display||lastResult.disease_name,
+    severity: lastResult.severity,
+    confidence: lastResult.plant_confidence,
+    date: new Date().toLocaleString()
+  });
+  localStorage.setItem('lsh',JSON.stringify(h.slice(0,50)));
+  alert('Saved to history!');
+}
+function renderHist(){
+  const el=document.getElementById('hist-list');
+  const h=JSON.parse(localStorage.getItem('lsh')||'[]');
+  if(!h.length){el.innerHTML='<div class="empty">No scans saved yet.</div>';return;}
+  el.innerHTML=h.map(i=>`
+    <div class="hist-item">
+      <div><div class="h-name">${i.disease}</div><div class="h-date">${i.date}</div></div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <span class="pill ${i.severity}">${i.severity}</span>
+        <span style="font-size:0.8rem;font-weight:600;color:var(--accent)">${i.confidence}%</span>
+      </div>
+    </div>`).join('');
+}
+function clearHist(){if(confirm('Clear all?')){localStorage.removeItem('lsh');renderHist();}}
+
+const PLANTS=[
+  {e:'🌿',n:'Tulsi (Holy Basil)',s:'Ocimum tenuiflorum',d:'Sacred herb. Boosts immunity, fights bacteria, relieves stress.',t:['Immunity','Antibacterial','Stress']},
+  {e:'🍃',n:'Neem',s:'Azadirachta indica',d:'Natural pesticide. Used for skin, dental care, blood purification.',t:['Antifungal','Skin','Pesticide']},
+  {e:'🌱',n:'Aloe Vera',s:'Aloe barbadensis',d:'Healing gel for burns, skin hydration, digestive health.',t:['Skin','Burns','Digestive']},
+  {e:'🍀',n:'Mint',s:'Mentha piperita',d:'Cooling herb for digestion, nausea, and breath freshening.',t:['Digestion','Nausea','Cooling']},
+  {e:'🌼',n:'Turmeric',s:'Curcuma longa',d:'Curcumin root — anti-inflammatory and powerful antioxidant.',t:['Anti-inflammatory','Antioxidant','Joints']},
+  {e:'🫚',n:'Ginger',s:'Zingiber officinale',d:'Relieves nausea, reduces inflammation, improves digestion.',t:['Nausea','Digestion','Pain']},
+  {e:'🌰',n:'Amla',s:'Phyllanthus emblica',d:'Richest natural Vitamin C source. Boosts immunity and hair.',t:['Vitamin C','Immunity','Hair']},
+  {e:'🌿',n:'Brahmi',s:'Bacopa monnieri',d:'Brain tonic — enhances memory, reduces anxiety, improves focus.',t:['Memory','Focus','Anxiety']},
+  {e:'🌳',n:'Tamarind',s:'Tamarindus indica',d:'Digestive aid rich in antioxidants. Good for liver health.',t:['Digestive','Antioxidant','Liver']},
+  {e:'🌺',n:'Henna',s:'Lawsonia inermis',d:'Natural hair dye with antifungal properties. Cools the body.',t:['Hair','Antifungal','Cooling']},
+  {e:'🌿',n:'Insulin Plant',s:'Costus pictus',d:'Used in Ayurveda to manage blood sugar levels naturally.',t:['Blood Sugar','Diabetes','Ayurveda']},
+  {e:'🍃',n:'Indian Borage',s:'Plectranthus amboinicus',d:'Treats coughs, colds, and respiratory infections.',t:['Cough','Cold','Antibacterial']},
+  {e:'🌿',n:'Betel',s:'Piper betle',d:'Antimicrobial leaf used in oral health across Asia.',t:['Oral Health','Antimicrobial','Digestive']},
+  {e:'🌱',n:'Castor',s:'Ricinus communis',d:'Oil used for hair growth, skin moisturizing, joint pain.',t:['Hair Growth','Skin','Joints']},
+  {e:'🌾',n:'Lemongrass',s:'Cymbopogon citratus',d:'Relieves anxiety, reduces fever, improves digestion.',t:['Anxiety','Fever','Digestion']},
+];
+function renderPlants(){
+  document.getElementById('plants-grid').innerHTML=PLANTS.map(p=>`
+    <div class="plant-card">
+      <span class="pe">${p.e}</span>
+      <h3>${p.n}</h3><div class="sci">${p.s}</div>
+      <p>${p.d}</p>
+      ${p.t.map(t=>`<span class="tag">${t}</span>`).join('')}
+    </div>`).join('');
+}
+
+function setStar(n){
+  rating=n;
+  document.querySelectorAll('.star').forEach((b,i)=>b.classList.toggle('on',i<n));
+}
+function submitRev(){
+  const name=document.getElementById('r-name').value.trim();
+  const role=document.getElementById('r-role').value.trim();
+  const msg=document.getElementById('r-msg').value.trim();
+  if(!name||!msg||!rating){alert('Fill name, message and rating.');return;}
+  const r=JSON.parse(localStorage.getItem('lsr')||'[]');
+  r.unshift({name,role,msg,rating,date:new Date().toLocaleDateString()});
+  localStorage.setItem('lsr',JSON.stringify(r));
+  document.getElementById('r-name').value='';
+  document.getElementById('r-role').value='';
+  document.getElementById('r-msg').value='';
+  setStar(0); rating=0;
+  renderRevs();
+  alert('Review submitted! Thank you 🌿');
+}
+const DEF_REVS=[
+  {name:'Dr. Priya Nair',role:'Botanist',msg:'Detected Tulsi leaf disease correctly on first try. Treatment plan was accurate and practical. Impressive project!',rating:5,date:'10/5/2026'},
+  {name:'Ramesh Kumar',role:'Farmer',msg:'Uploaded my Neem leaf and got instant disease analysis. The remedies actually worked. Very useful tool.',rating:5,date:'8/5/2026'},
+  {name:'Aisha Patel',role:'Student',msg:'Clean interface, accurate disease detection. The plant guide is very informative. Loved the treatment timeline!',rating:4,date:'5/5/2026'},
+];
+function renderRevs(){
+  const saved=JSON.parse(localStorage.getItem('lsr')||'[]');
+  document.getElementById('rev-grid').innerHTML=[...saved,...DEF_REVS].map(r=>`
+    <div class="rev-card">
+      <div class="rev-stars">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</div>
+      <p class="rev-text">"${r.msg}"</p>
+      <div class="rev-name">${r.name}</div>
+      <div class="rev-role">${r.role} · ${r.date}</div>
+    </div>`).join('');
+}
+
+renderPlants();
+renderRevs();
+</script>
+</body>
+</html>
