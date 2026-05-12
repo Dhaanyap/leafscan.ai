@@ -1,7 +1,5 @@
 flask
 flask-cors
-tensorflow==2.13.0
+tensorflow
 pillow
 numpy
-scikit-learn
-kaggle
