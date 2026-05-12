@@ -1,5 +1,6 @@
 flask
 flask-cors
-tensorflow-cpu
+tensorflow==2.13.0
 pillow
 numpy
+keras==2.13.1
