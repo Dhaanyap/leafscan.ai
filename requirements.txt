@@ -1,5 +1,5 @@
 flask
 flask-cors
-tensorflow
+tensorflow-cpu
 pillow
 numpy
