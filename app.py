@@ -11,7 +11,7 @@ CORS(app)
 MODEL_PATH     = "plant_model.h5"
 CLASS_IDX_PATH = "class_indices.json"
 IMG_SIZE       = (224, 224)
-GEMINI_KEY     = "AIzaSyBbeZRaAzJk9FZPbSOzIVR4x7HHnz3MwoU"
+GEMINI_KEY = os.environ.get("GEMINI_API_KEY", "AIzaSyBbeZRaAzJk9FZPbSOzIVR4x7HHnz3MwoU")
 GEMINI_URL     = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={GEMINI_KEY}"
 
 print("Loading plant model...")
