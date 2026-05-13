@@ -7,7 +7,7 @@ app = Flask(__name__, static_folder='.')
 CORS(app)
 
 GEMINI_KEY = os.environ.get("GEMINI_API_KEY", "")
-GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={GEMINI_KEY}"
+GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_KEY}"
 
 def analyze_leaf(img_bytes):
     img_b64 = base64.b64encode(img_bytes).decode("utf-8")
